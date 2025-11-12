@@ -1,2 +1,5 @@
 .idea
 .env
+.well-known/
+
+sync_config.jsonc

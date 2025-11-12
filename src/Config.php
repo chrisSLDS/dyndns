@@ -1,135 +1,115 @@
 <?php
 
+declare(strict_types=1);
+
 namespace netcup\DNS\API;
+
+use netcup\DNS\API\Exception\ConfigurationException;
 
 final class Config
 {
+    // Init-Guard
+    private static bool $initialized = false;
+
+    private static string $username;
+    private static string $password;
+    private static string $apiKey;
+    private static string $apiPassword;
+    private static int    $customerId;
+    private static bool   $log;
+    private static string $logFile;
+    private static bool   $debug;
+    private static bool   $traceLog;
+
+    private function __construct() {} // no instances
 
     /**
-     * @var string
+     * @param array<string,mixed> $config
+     * @throws ConfigurationException|\LogicException
      */
-    private $username;
-
-    /**
-     * @var string
-     */
-    private $password;
-
-    /**
-     * @var string
-     */
-    private $apiKey;
-
-    /**
-     * @var string
-     */
-    private $apiPassword;
-
-    /**
-     * @var int
-     */
-    private $customerId;
-
-    /**
-     * @var bool
-     */
-    private $log = true;
-
-    /**
-     * @var string
-     */
-    private $logFile;
-
-    /**
-     * @var bool
-     */
-    private $debug;
-
-    public function __construct(array $config)
+    public static function init(array $config): void
     {
-        foreach (get_object_vars($this) as $key => $val) {
-            if (isset($config[$key])) {
-                $this->$key = $config[$key];
-            }
+        if (self::$initialized) {
+            throw new \LogicException('Config already initialized.');
+        }
+
+        self::$username    = (string)($config['username']   ?? '');
+        self::$password    = (string)($config['password']   ?? '');
+        self::$apiKey      = (string)($config['apiKey']     ?? '');
+        self::$apiPassword = (string)($config['apiPassword'] ?? '');
+        self::$customerId  = (int)   ($config['customerId'] ?? 0);
+        self::$log         = (bool)  ($config['log']        ?? true);
+        self::$logFile     = (string)($config['logFile']    ?? '');
+        self::$debug       = (bool)  ($config['debug']      ?? false);
+        self::$traceLog    = (bool)  ($config['traceLog']   ?? false);
+
+        self::validate();
+        self::$initialized = true;
+    }
+
+    private static function ensureInit(): void
+    {
+        if (!self::$initialized) {
+            throw new \LogicException('Config not initialized. Call Config::init() first.');
         }
     }
 
     /**
-     * @return bool
+     * @throws ConfigurationException
      */
-    public function isValid()
+    private static function validate(): void
     {
-        return
-            !empty($this->username) &&
-            !empty($this->password) &&
-            !empty($this->apiKey) &&
-            !empty($this->apiPassword) &&
-            !empty($this->customerId) &&
-            !empty($this->logFile);
-
+        if (self::$username === '')   throw ConfigurationException::missingField('username');
+        if (self::$password === '')   throw ConfigurationException::missingField('password');
+        if (self::$apiKey === '')     throw ConfigurationException::missingField('apiKey');
+        if (self::$apiPassword === '') throw ConfigurationException::missingField('apiPassword');
+        if (self::$customerId === 0)  throw ConfigurationException::missingField('customerId');
+        if (self::$logFile === '')    throw ConfigurationException::missingField('logFile');
     }
 
-    /**
-     * @return string
-     */
-    public function getUsername()
+    public static function getUsername(): string
     {
-        return $this->username;
+        self::ensureInit();
+        return self::$username;
     }
-
-    /**
-     * @return string
-     */
-    public function getPassword()
+    public static function getPassword(): string
     {
-        return $this->password;
+        self::ensureInit();
+        return self::$password;
     }
-
-    /**
-     * @return string
-     */
-    public function getApiKey()
+    public static function getApiKey(): string
     {
-        return $this->apiKey;
+        self::ensureInit();
+        return self::$apiKey;
     }
-
-    /**
-     * @return string
-     */
-    public function getApiPassword()
+    public static function getApiPassword(): string
     {
-        return $this->apiPassword;
+        self::ensureInit();
+        return self::$apiPassword;
     }
-
-    /**
-     * @return int
-     */
-    public function getCustomerId()
+    public static function getCustomerId(): int
     {
-        return $this->customerId;
+        self::ensureInit();
+        return self::$customerId;
     }
-
-    /**
-     * @return bool
-     */
-    public function isLog()
+    public static function isLog(): bool
     {
-        return $this->log;
+        self::ensureInit();
+        return self::$log;
     }
-    
-    /**
-     * @return string
-     */
-    public function getLogFile()
+    public static function getLogFile(): string
     {
-        return $this->logFile;
+        self::ensureInit();
+        return self::$logFile;
     }
-
-    /**
-     * @return bool
-     */
-    public function isDebug()
+    public static function isDebug(): bool
     {
-        return $this->debug;
+        self::ensureInit();
+        return self::$debug;
+    }
+    public static function isTraceLog(): bool
+    {
+        self::ensureInit();
+        return self::$traceLog;
     }
 }
