@@ -201,7 +201,8 @@ foreach ($domains as $domain) {
         'request' => $request,
         'domain'  => $domain,
         'server'  => $_SERVER,
-    ]);
+        'post'  => $_POST,
+        'raw'    => file_get_contents('php://input')    ]);
 
     // Call the Handler with the current domain
     (new Handler($config, $request))->doRun();

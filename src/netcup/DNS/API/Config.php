@@ -6,118 +6,110 @@ namespace netcup\DNS\API;
 
 use netcup\DNS\API\Exception\ConfigurationException;
 
-readonly class Config
+final class Config
 {
-    private static string $username = '';
-    private static string $password = '';
-    private static string $apiKey = '';
-    private static string $apiPassword = '';
-    private static int $customerId = 0;
-    private static bool $log = true;
-    private static string $logFile = '';
-    private static bool $debug = false;
-    private static bool $traceLog = false;
+    // Init-Guard
+    private static bool $initialized = false;
 
-    private function __construct()
+    private static string $username;
+    private static string $password;
+    private static string $apiKey;
+    private static string $apiPassword;
+    private static int    $customerId;
+    private static bool   $log;
+    private static string $logFile;
+    private static bool   $debug;
+    private static bool   $traceLog;
+
+    private function __construct() {} // no instances
+
+    /**
+     * @param array<string,mixed> $config
+     * @throws ConfigurationException|\LogicException
+     */
+    public static function init(array $config): void
     {
-        $this->validate();
+        if (self::$initialized) {
+            throw new \LogicException('Config already initialized.');
+        }
+
+        self::$username    = (string)($config['username']   ?? '');
+        self::$password    = (string)($config['password']   ?? '');
+        self::$apiKey      = (string)($config['apiKey']     ?? '');
+        self::$apiPassword = (string)($config['apiPassword'] ?? '');
+        self::$customerId  = (int)   ($config['customerId'] ?? 0);
+        self::$log         = (bool)  ($config['log']        ?? true);
+        self::$logFile     = (string)($config['logFile']    ?? '');
+        self::$debug       = (bool)  ($config['debug']      ?? false);
+        self::$traceLog    = (bool)  ($config['traceLog']   ?? false);
+
+        self::validate();
+        self::$initialized = true;
+    }
+
+    private static function ensureInit(): void
+    {
+        if (!self::$initialized) {
+            throw new \LogicException('Config not initialized. Call Config::init() first.');
+        }
     }
 
     /**
-     * Create a Config instance from an array
-     * 
-     * @param array<string, mixed> $config
      * @throws ConfigurationException
      */
-    public static function fromArray(array $config): self
+    private static function validate(): void
     {
-        self::$instance = new self(
-            username: (string) ($config['username'] ?? ''),
-            password: (string) ($config['password'] ?? ''),
-            apiKey: (string) ($config['apiKey'] ?? ''),
-            apiPassword: (string) ($config['apiPassword'] ?? ''),
-            customerId: (int) ($config['customerId'] ?? 0),
-            log: (bool) ($config['log'] ?? true),
-            logFile: (string) ($config['logFile'] ?? ''),
-            debug: (bool) ($config['debug'] ?? false),
-            traceLog: (bool) ($config['traceLog'] ?? false),
-        );
-        
-        return self::$instance;
+        if (self::$username === '')   throw ConfigurationException::missingField('username');
+        if (self::$password === '')   throw ConfigurationException::missingField('password');
+        if (self::$apiKey === '')     throw ConfigurationException::missingField('apiKey');
+        if (self::$apiPassword === '') throw ConfigurationException::missingField('apiPassword');
+        if (self::$customerId === 0)  throw ConfigurationException::missingField('customerId');
+        if (self::$logFile === '')    throw ConfigurationException::missingField('logFile');
     }
 
-    public static function getInstance(): ?self
+    public static function getUsername(): string
     {
-        return self::$instance;
+        self::ensureInit();
+        return self::$username;
     }
-
-    /**
-     * @throws ConfigurationException
-     */
-    private function validate(): void
+    public static function getPassword(): string
     {
-        if (empty($this->username)) {
-            throw ConfigurationException::missingField('username');
-        }
-        if (empty($this->password)) {
-            throw ConfigurationException::missingField('password');
-        }
-        if (empty($this->apiKey)) {
-            throw ConfigurationException::missingField('apiKey');
-        }
-        if (empty($this->apiPassword)) {
-            throw ConfigurationException::missingField('apiPassword');
-        }
-        if (empty($this->customerId)) {
-            throw ConfigurationException::missingField('customerId');
-        }
-        if (empty($this->logFile)) {
-            throw ConfigurationException::missingField('logFile');
-        }
+        self::ensureInit();
+        return self::$password;
     }
-
-    public function getUsername(): string
+    public static function getApiKey(): string
     {
-        return $this->username;
+        self::ensureInit();
+        return self::$apiKey;
     }
-
-    public function getPassword(): string
+    public static function getApiPassword(): string
     {
-        return $this->password;
+        self::ensureInit();
+        return self::$apiPassword;
     }
-
-    public function getApiKey(): string
+    public static function getCustomerId(): int
     {
-        return $this->apiKey;
+        self::ensureInit();
+        return self::$customerId;
     }
-
-    public function getApiPassword(): string
+    public static function isLog(): bool
     {
-        return $this->apiPassword;
+        self::ensureInit();
+        return self::$log;
     }
-
-    public function getCustomerId(): int
+    public static function getLogFile(): string
     {
-        return $this->customerId;
+        self::ensureInit();
+        return self::$logFile;
     }
-
-    public function isLog(): bool
+    public static function isDebug(): bool
     {
-        return $this->log;
+        self::ensureInit();
+        return self::$debug;
     }
-    
-    public function getLogFile(): string
+    public static function isTraceLog(): bool
     {
-        return $this->logFile;
-    }
-
-    public function isDebug(): bool
-    {
-        return $this->debug;
-    }
-
-    public function isTraceLog(): bool
-    {
-        return $this->traceLog;
+        self::ensureInit();
+        return self::$traceLog;
     }
 }

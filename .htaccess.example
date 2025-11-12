@@ -1,4 +1,4 @@
-<FilesMatch "\.(env|json)$">
-	Order allow,deny
-	Deny from all
+<FilesMatch "\.(env|json|log)$">
+    RedirectMatch 404 ^/.*$
 </FilesMatch>
+

@@ -10,23 +10,29 @@ namespace netcup\DNS\API;
 class Logger
 {
     private const DATE_FORMAT = 'Y-m-d H:i:s';
-    
+
     /** @var array<string, array<string>> */
     private static array $domainLogs = [];
 
     /**
      * Log DNS record updates in the original format
      */
+
+    public static function debug(string $msg): void    {
+        if (Config::isDebug()) {
+            printf('[DEBUG] %s %s', $msg, PHP_EOL);
+        }
+    }
+
     public static function logDnsUpdate(string $domain, string $message): void
     {
-        $config = Config::getInstance();
-        if (!$config?->isLog()) {
+        if (!Config::isLog()) {
             return;
         }
 
         if (!isset(self::$domainLogs[$domain])) {
             self::$domainLogs[$domain] = [];
-            
+
             // Load existing logs if available
             $logFile = dirname(__DIR__, 4) . '/log.json';
             if (is_readable($logFile)) {
@@ -39,10 +45,10 @@ class Logger
                 }
             }
         }
-        
+
         // Add new log entry
         self::$domainLogs[$domain][] = sprintf('[%s] %s', date('c'), $message);
-        
+
         // Keep only the newest 100 entries for each domain
         self::$domainLogs[$domain] = array_reverse(
             array_slice(
@@ -51,7 +57,7 @@ class Logger
                 100
             )
         );
-        
+
         // Save to log.json
         $logFile = dirname(__DIR__, 4) . '/log.json';
         file_put_contents(
@@ -60,14 +66,13 @@ class Logger
             LOCK_EX
         );
     }
-    
+
     /**
      * Log detailed trace information for debugging
      */
     public static function logTrace(array $data): void
     {
-        $config = Config::getInstance();
-        if (!$config?->isTraceLog()) {
+        if (!Config::isTraceLog()) {
             return;
         }
 
@@ -76,7 +81,7 @@ class Logger
             'timestamp' => date(self::DATE_FORMAT),
             'data' => $data
         ];
-        
+
         $json = json_encode($entry, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         if ($json === false) {
             $json = sprintf(
@@ -84,10 +89,10 @@ class Logger
                 json_last_error_msg()
             );
         }
-        
+
         file_put_contents(
-            $traceFile, 
-            $json . PHP_EOL . str_repeat('-', 80) . PHP_EOL, 
+            $traceFile,
+            $json . PHP_EOL . str_repeat('-', 80) . PHP_EOL,
             FILE_APPEND | LOCK_EX
         );
     }
