@@ -42,7 +42,15 @@ final class Handler
         return $this;
     }
 
-    public function doRun(): self
+    /**
+     * Run the update and return a dyndnsv2-style result for the processed domain.
+     *
+     * Returns an array with keys:
+     *  - status: string (good|nochg|nohost|badauth|911)
+     *  - ip: string|null (the IP that was set or requested)
+     *  - message: string|null (optional human message)
+     */
+    public function doRun(): array
     {
         try {
             $clientRequestId = md5($this->payload->getDomain() . time());
@@ -72,6 +80,8 @@ final class Handler
 
             $changes = false;
             $dnsRecords = $dnsResponse->getDnsRecords() ?? [];
+            $found = false; // whether a matching record for the requested domain existed
+            $changedIp = null; // the IP that was changed (or requested)
 
             foreach ($dnsRecords as $record) {
                 $recordHostnameReal = (!in_array($record->hostname, $this->payload->getMatcher(), true)) 
@@ -79,6 +89,7 @@ final class Handler
                     : $this->payload->getHostname();
 
                 if ($recordHostnameReal === $this->payload->getDomain()) {
+                    $found = true;
                     // Update A Record if exists and IP has changed
                     if (DnsRecordType::A->value === $record->type && $this->payload->getIpv4() &&
                         ($this->payload->isForce() || $record->destination !== $this->payload->getIpv4())
@@ -90,6 +101,7 @@ final class Handler
                             $this->payload->getIpv4()
                         ));
                         $changes = true;
+                        $changedIp = $this->payload->getIpv4();
                     }
 
                     // Update AAAA Record if exists and IP has changed
@@ -103,8 +115,17 @@ final class Handler
                             $this->payload->getIpv6()
                         ));
                         $changes = true;
+                        // prefer IPv4 if both changed, otherwise IPv6
+                        if ($changedIp === null) {
+                            $changedIp = $this->payload->getIpv6();
+                        }
                     }
                 }
+            }
+
+            // If no matching record existed for this domain, return nohost
+            if (!$found) {
+                return ['status' => 'nohost', 'ip' => null, 'message' => 'no matching DNS record'];
             }
 
             // Update DNS records if needed
@@ -144,11 +165,19 @@ final class Handler
             }
 
             $this->doLog('api logout successful');
+
+            // Map result to dyndnsv2-like responses
+            if ($changes) {
+                return ['status' => 'good', 'ip' => $changedIp ?? $this->payload->getIpv4() ?? $this->payload->getIpv6(), 'message' => 'updated'];
+            }
+
+            return ['status' => 'nochg', 'ip' => $changedIp ?? $this->payload->getIpv4() ?? $this->payload->getIpv6(), 'message' => 'no change'];
             
         } catch (SoapFault $e) {
             throw new RuntimeException('SOAP communication error: ' . $e->getMessage(), 0, $e);
         }
 
-        return $this;
+        // Should not reach here, but satisfy return type
+        return ['status' => '911', 'ip' => null, 'message' => 'unexpected error'];
     }
 }

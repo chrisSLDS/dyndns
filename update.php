@@ -202,8 +202,46 @@ foreach ($domains as $domain) {
         'domain'  => $domain,
         'server'  => $_SERVER,
         'post'  => $_POST,
-        'raw'    => file_get_contents('php://input')    ]);
+        'raw'    => file_get_contents('php://input')
+    ]);
 
-    // Call the Handler with the current domain
-    (new Handler($config, $request))->doRun();
+    // Helper: format dyndnsv2 response
+    $formatDyndns = function (string $status, ?string $ip = null, ?string $message = null): string {
+        switch ($status) {
+            case 'good':
+                return $ip ? sprintf('good %s', $ip) : 'good';
+            case 'nochg':
+                return $ip ? sprintf('nochg %s', $ip) : 'nochg';
+            case 'nohost':
+                return 'nohost';
+            case 'badauth':
+                return 'badauth';
+            case '911':
+            default:
+                return $message ? sprintf('911 %s', $message) : '911';
+        }
+    };
+
+    // Call the Handler with the current domain and capture result
+    try {
+        $result = (new Handler($config, $request))->doRun();
+        $status = $result['status'] ?? '911';
+        $ip = $result['ip'] ?? null;
+        $message = $result['message'] ?? null;
+    } catch (Throwable $e) {
+        // Map known credential-related errors to badauth when possible
+        $prev = $e->getPrevious();
+        if ($prev instanceof \netcup\DNS\API\Exception\PayloadException || stripos($e->getMessage(), 'invalid credentials') !== false) {
+            $status = 'badauth';
+            $ip = null;
+            $message = null;
+        } else {
+            $status = '911';
+            $ip = null;
+            $message = $e->getMessage();
+        }
+    }
+
+    // dyndnsv2-style response
+    echo $formatDyndns($status, $ip, $message) . PHP_EOL;
 }
